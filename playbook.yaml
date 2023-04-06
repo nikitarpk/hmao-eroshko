@@ -1,8 +1,310 @@
-Document contains trailing content not separated by a ... or --- line (52:1)
-  50 |       - vbHOvGJEwDekveaN9rynSr18A3KPN6vd
-  51 |
-> 52 | AAAAB3NzaC1yc2EAAAADAQABAAABgQCo20TEayF8Y/bKgqoBiySUUeYSVZJOCRIlpMVd4tmId3pXvgbpCF01r18aXtLidoQ63YNSt+8ZxDpRAB4AB0F5JWFXL1GJXUgSzA017YNtyrxe/OETnyZAH5+vYxrlOy5WY7cPmHbtYVdjwyZ0cbGnBCDEua5omKdCX0XMcoFT6bZZtk8PmmGY1KA6WJ6+Re4dGJbeGoYJMNXtKSqUI2pIHL5hQCmQMpzkBhE0/dF3k14IYRjO92TCZBdu+X43fT5Ref8sXcr9xzRMIVXLOHKj39Ukjl59AwZ9VBt7dR0UNst0xwEtPPBdmcTS0T7bwFdq5F9jtMAq3rVclkSkMwVVy8YajzVgTq7CegdUSOOV9WUDPC2uveJDWNdbAGQYcNsRCIvPHfbscEzdkeDmphaPjmel/ydkm3XSpa9s4QQ9KMlGGUrFY51IfYiHnUSYUoGq7EaQzJ3/haM/nmYpFN/BnYoZKdjBcdmoyIOWQHvuu20IDJUV/B8FuFmGoQYLskc=
-     | ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-  53 |
-  54 | ...
-  55 |
+---
+- name: DEP
+  hosts: "DEP"
+  tasks:
+    - name: Git
+      ansible.builtin.git:
+        repo: "https://github.com/andgabs/skill_hmao"
+        dest: /root/skill
+- name: Config
+  hosts: "PJC-01,PJC-02,PJD-01,PJD-02"
+  tasks:
+    - name: copy
+      ansible.builtin.copy:
+        src: /root/skill/software.yaml
+        dest: /software.yaml
+    - name: install packages
+      ansible.builtin.package:
+        name:
+          - curl
+          - lynx
+          - vim
+          - mc
+        state: present
+        update_cache: true
+    - name: ssh port
+      ansible.builtin.lineinfile:
+        dest: "/etc/ssh/sshd_config"
+        regexp: "^Port"
+        line: "Port 1022"
+    - name: change key
+      ansible.builtin.lineinfile:
+        dest: "/etc/ssh/sshd_config"
+        line: "{{ item }}"
+      loop:
+        - RSAAuthentication yes
+        - PubkeyAuthentication yes
+        - AuthorizedKeysFile %h/.ssh/authorized_keys
+    - name: users
+      ansible.builtin.user:
+        name: "{{ item.username }}"
+        password: "{{ item.userpass }}"
+      loop:
+        - {
+            username: "Webdeveloper",
+            userpass: "Dp68tTJzYXcxVigsqodcK9Ifxgk6lwhf",
+          }
+        - {
+            username: "Devopsengineer",
+            userpass: "Rt80eN8ERk9RbBQPEFdMHEAqH0G6YJ6n",
+          }
+        - {
+            username: "Projectmanager",
+            userpass: "0qZTkqrTLA9ufnBlImTtwWpvO6jfxP6M",
+          }
+        - {
+            username: "GabyshevAG",
+            userpass: "vbHOvGJEwDekveaN9rynSr18A3KPN6vd",
+          }
+    - name: leader key
+      ansible.posix.authorized_key:
+        user: "{{ item }}"
+        state: present
+        key: "{{ id_rsa_pub }}"
+      loop:
+        - Webdeveloper
+        - Devopsengineer
+        - Projectmanager
+        - GabyshevAG
+      vars:
+        id_rsa_pub: "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABgQCo20TEayF8Y/bKgqoBiySUUeYSVZJOCRIlpMVd4tmId3pXvgbpCF01r18aXtLidoQ63YNSt+8ZxDpRAB4AB0F5JWFXL1GJXUgSzA017YNtyrxe/OETnyZAH5+vYxrlOy5WY7cPmHbtYVdjwyZ0cbGnBCDEua5omKdCX0XMcoFT6bZZtk8PmmGY1KA6WJ6+Re4dGJbeGoYJMNXtKSqUI2pIHL5hQCmQMpzkBhE0/dF3k14IYRjO92TCZBdu+X43fT5Ref8sXcr9xzRMIVXLOHKj39Ukjl59AwZ9VBt7dR0UNst0xwEtPPBdmcTS0T7bwFdq5F9jtMAq3rVclkSkMwVVy8YajzVgTq7CegdUSOOV9WUDPC2uveJDWNdbAGQYcNsRCIvPHfbscEzdkeDmphaPjmel/ydkm3XSpa9s4QQ9KMlGGUrFY51IfYiHnUSYUoGq7EaQzJ3/haM/nmYpFN/BnYoZKdjBcdmoyIOWQHvuu20IDJUV/B8FuFmGoQYLskc="
+- name: dockerdebian
+  hosts: "PJD-01,PJD-02"
+  tasks:
+    - name: packages
+      ansible.builtin.apt:
+        name:
+          - ufw
+          - ca-certificates
+          - curl
+          - python3-pip
+          - python3-setuptools
+          - gnupg
+        state: present
+    - name: firewall
+      community.general.ufw:
+        rule: allow
+        proto: tcp
+        port: "{{ item }}"
+        state: enabled
+      loop:
+        - 22
+        - 80
+        - 8080
+        - 1022
+    - name: Install the Docker package | Add Docker GPG apt Key
+      apt_key:
+        url: https://download.docker.com/linux/debian/gpg
+        state: present
+    - name: Install the Docker package | Add Docker Repository
+      apt_repository:
+        repo: deb https://download.docker.com/linux/ubuntu focal stable
+        state: present
+    - name: Install the Docker package | Update apt and install docker-ce
+      apt:
+        name: docker-ce
+        state: latest
+        update_cache: true
+    - name: Install the Docker package | Install Docker Module for Python
+      pip:
+        name: docker
+    - name: Run the docker-compose installation script
+      script: /root/skill/docker-compose.sh
+    - name: Create a directory /skillcloud-nginx
+      file:
+        path: /skillcloud-nginx
+        state: directory
+    - name: Copying files needed to build images
+      copy:
+        src: /root/skill/docker-compose.yml
+        dest: /skillcloud-nginx
+    - name: Create a directory /skillcloud-nginx/{site,balance}
+      file:
+        path: /skillcloud-nginx/{{ item }}
+        state: directory
+      loop:
+        - site
+        - balance
+    - name: Copying files needed to build images
+      copy:
+        src: /root/skill/{{ item.src }}
+        dest: /skillcloud-nginx/{{ item.dest }}/Dockerfile
+      loop:
+        - { src: Dockerfile-site, dest: site }
+        - { src: Dockerfile-balance, dest: balance }
+    - name: Copying files needed to build images
+      copy:
+        src: /root/skill/{{ item.src }}
+        dest: /skillcloud-nginx/{{ item.dest }}
+      loop:
+        - { src: index.html, dest: site }
+        - { src: nginx.conf, dest: balance }
+    - name: Restart UFW
+      service:
+        name: ufw
+        state: restarted
+    - name: Restart SSH
+      service:
+        name: sshd
+        state: restarted
+    - name: Change ssh port to 1022
+      set_fact:
+        ansible_port: 1022
+    - name: Reboot virtual machines
+      reboot:
+    - name: Change ssh port to 1022
+      set_fact:
+        ansible_port: 1022
+    - name: Change ansible_python_interpreter
+      set_fact:
+        ansible_python_interpreter: /usr/bin/python3
+    - name: Build images on a VM using Dockerfile in the skillcloud-nsinx directory
+      docker_image:
+        name: "{{ item.name }}"
+        build:
+          path: /skillcloud-nginx/{{ item.path }}
+      loop:
+        - { name: site, path: site }
+        - { name: balance, path: balance }
+    - name: Pip install docker-compose
+      pip:
+        name: docker-compose
+    - name: Launching docker-compose.yml for container assembly
+      docker_compose:
+        project_src: /skillcloud-nginx
+        files:
+          - docker-compose.yml
+        update_cache: true
+- name: dockercentos
+  hosts: "PJC-01,PJC-02"
+  tasks:
+    - name: yumtils
+      ansible.builtin.yum:
+        name:
+          - yum-utils
+          - device-mapper-persistent-data
+          - lvm2
+        state: latest
+    - name: Add Docker repo
+      get_url:
+        url: https://download.docker.com/linux/centos/docker-ce.repo
+        dest: /etc/yum.repos.d/docer-ce.repo
+      become: yes
+
+    - name: Enable Docker Edge repo
+      ini_file:
+        dest: /etc/yum.repos.d/docer-ce.repo
+        section: "docker-ce-edge"
+        option: enabled
+        value: 0
+      become: yes
+
+    - name: Enable Docker Test repo
+      ini_file:
+        dest: /etc/yum.repos.d/docer-ce.repo
+        section: "docker-ce-test"
+        option: enabled
+        value: 0
+      become: yes
+
+    - name: Install Docker
+      package:
+        name: docker-ce
+        state: latest
+      become: yes
+
+    - name: packages
+      ansible.builtin.yum:
+        name:
+          - firewalld
+          - docker-ce
+          - docker-ce-cli
+          - containerd.io
+          - docker-buildx-plugin
+          - docker-compose-plugin
+          - ca-certificates
+          - curl
+          - python3-pip
+          - python3-setuptools
+        state: present
+    - name: fwd
+      ansible.posix.firewalld:
+        zone: public
+        port: "{{ item.port }}"
+        immediate: true
+        permanent: true
+        state: "{{ item.state }}"
+      loop:
+        - { port: 80/tcp, state: enabled }
+        - { port: 8080/tcp, state: enabled }
+        - { port: 1022/tcp, state: enabled }
+    - name: Restart fwd
+      service:
+        name: firewalld
+        state: restarted
+    - name: Restart SSH
+      service:
+        name: sshd
+        state: restarted
+    - name: Install the Docker package | Install Docker Module for Python
+      pip:
+        name: docker
+    - name: Run the docker-compose installation script
+      script: /root/skill/docker-compose.sh
+    - name: Create a directory /skillcloud-nginx
+      file:
+        path: /skillcloud-nginx
+        state: directory
+    - name: Copying files needed to build images
+      copy:
+        src: /root/skill/docker-compose.yml
+        dest: /skillcloud-nginx
+    - name: Create a directory /skillcloud-nginx/{site,balance}
+      file:
+        path: /skillcloud-nginx/{{ item }}
+        state: directory
+      loop:
+        - site
+        - balance
+    - name: Copying files needed to build images
+      copy:
+        src: /root/skill/{{ item.src }}
+        dest: /skillcloud-nginx/{{ item.dest }}/Dockerfile
+      loop:
+        - { src: Dockerfile-site, dest: site }
+        - { src: Dockerfile-balance, dest: balance }
+    - name: Copying files needed to build images
+      copy:
+        src: /root/skill/{{ item.src }}
+        dest: /skillcloud-nginx/{{ item.dest }}
+      loop:
+        - { src: index.html, dest: site }
+        - { src: nginx.conf, dest: balance }
+    - name: Change ssh port to 1022
+      set_fact:
+        ansible_port: 1022
+    - name: Reboot virtual machines
+      reboot:
+    - name: Change ssh port to 1022
+      set_fact:
+        ansible_port: 1022
+    - name: Change ansible_python_interpreter
+      set_fact:
+        ansible_python_interpreter: /usr/bin/python3
+    - name: Build images on a VM using Dockerfile in the skillcloud-nsinx directory
+      docker_image:
+        name: "{{ item.name }}"
+        build:
+          path: /skillcloud-nginx/{{ item.path }}
+      loop:
+        - { name: site, path: site }
+        - { name: balance, path: balance }
+    - name: Pip install docker-compose
+      pip:
+        name: docker-compose
+    - name: Launching docker-compose.yml for container assembly
+      docker_compose:
+        project_src: /skillcloud-nginx
+        files:
+          - docker-compose.yml
+        update_cache: true
